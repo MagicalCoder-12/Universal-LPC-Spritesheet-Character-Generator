@@ -98,6 +98,91 @@ $(document).ready(function () {
   const universalSheetWidth = 832;
   const universalSheetHeight = 3456;
 
+  // Add visual enhancements and interactive elements
+  initializeUIEnhancements();
+
+  function initializeUIEnhancements() {
+    // Add hover effects to buttons
+    $('.control-buttons button, .control-buttons input[type="button"]').hover(
+      function() {
+        $(this).addClass('button-hover');
+      },
+      function() {
+        $(this).removeClass('button-hover');
+      }
+    );
+
+    // Add animation feedback to the animation selector
+    $('#whichAnim').on('change', function() {
+      $(this).addClass('changed');
+      setTimeout(() => {
+        $(this).removeClass('changed');
+      }, 1000);
+    });
+
+    // Add visual feedback to checkboxes and radio buttons
+    $('input[type="checkbox"], input[type="radio"]').on('change', function() {
+      const $this = $(this);
+      const $label = $this.next('label');
+      
+      if ($this.is(':checked')) {
+        $label.addClass('selected');
+      } else {
+        $label.removeClass('selected');
+      }
+      
+      // Add ripple effect
+      if (!$this.hasClass('no-ripple')) {
+        const $ripple = $('<span class="ripple"></span>');
+        const size = Math.max($this.outerWidth(), $this.outerHeight());
+        $ripple.css({
+          width: size,
+          height: size,
+          left: ($this.outerWidth() - size) / 2,
+          top: ($this.outerHeight() - size) / 2
+        });
+        $this.parent().append($ripple);
+        
+        setTimeout(() => {
+          $ripple.remove();
+        }, 600);
+      }
+    });
+
+    // Add keyboard navigation support
+    $(document).on('keydown', function(e) {
+      // Ctrl + S to save
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        $('#saveAsPNG').click();
+      }
+      
+      // Ctrl + Z to reset
+      if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        $('#resetAll').click();
+      }
+    });
+
+    // Add smooth scrolling to credits
+    $('#scroll-to-credits').on('click', function(e) {
+      e.preventDefault();
+      $('html, body').animate({
+        scrollTop: $('#credits').offset().top
+      }, 800);
+    });
+
+    // Add tooltips to elements with title attributes
+    $('[title]').each(function() {
+      const $this = $(this);
+      const title = $this.attr('title');
+      if (title) {
+        $this.attr('data-tooltip', title);
+        $this.removeAttr('title');
+      }
+    });
+  }
+
   const base_animations = {
     spellcast: 0,
     thrust: 4 * universalFrameSize,
@@ -1121,7 +1206,13 @@ $(".exportSplitAnimations").click(async function() {
           "\n\t\t- "
         )}`;
         const notesForDisplay = `- Note: ${credit.notes}`;
-        let creditEntry = `${credit.fileName}\n\t${notesForDisplay}\n\t${licensesForDisplay}\n\t${authorsForDisplay}\n\t${linksForDisplay}\n\n`;
+        let creditEntry = `${credit.fileName}
+\t${notesForDisplay}
+\t${licensesForDisplay}
+\t${authorsForDisplay}
+\t${linksForDisplay}
+
+`;
         creditString += creditEntry;
       }
     });

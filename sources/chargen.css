@@ -16,6 +16,22 @@ canvas {
   image-rendering: pixelated;
 }
 
+/* Zoom States */
+.zoomed-in {
+  zoom: 2;
+  transition: zoom 0.3s ease;
+}
+
+.zoomed-out {
+  zoom: 0.5;
+  transition: zoom 0.3s ease;
+}
+
+.zoomed-in.zoomed-out {
+  zoom: 1;
+  transition: zoom 0.3s ease;
+}
+
 .zoomed-in {
   zoom: 2;
 }
@@ -99,6 +115,10 @@ input[type=button], input[type=reset] {
 
 #previewAnimationsBox > * {
   vertical-align: top;
+}
+
+#previewAnimationsBox {
+  position: relative;
 }
 
 #controls {

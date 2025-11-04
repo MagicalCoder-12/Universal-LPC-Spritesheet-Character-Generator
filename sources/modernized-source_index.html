@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Universal LPC Sprite Sheet Character Generator</title>
+	
+	<!-- Preconnect for faster resource loading from external CDNs -->
+	<link rel="preconnect" href="https://code.jquery.com" crossorigin>
+	<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+	
+	<!-- Preload critical resources -->
+	<link rel="preload" href="sources/chargen.css" as="style">
+	<link rel="preload" href="sources/modern-styles.css" as="style">
+	<link rel="preload" href="https://code.jquery.com/jquery-3.7.1.min.js" as="script" crossorigin integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=">
+	<link rel="preload" href="item-metadata.js" as="script">
+	<link rel="preload" href="sources/chargen.js" as="script">
+	
+	<!-- Stylesheets -->
+	<link rel="stylesheet" type="text/css" href="sources/chargen.css">
+	<link rel="stylesheet" type="text/css" href="sources/modern-styles.css">
+	
+	<!-- Scripts -->
+	<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+	<script type="text/javascript" src="sources/jhash-2.2.min.js"></script>
+	<script type="text/javascript" src="sources/custom-animations.js"></script>
+	<script type="text/javascript" src="sources/jszip.min.js"></script>
+	<script type="text/javascript" src="sources/copy-image.js"></script>
+	<script type="text/javascript" src="sources/performance-profiler.js"></script>
+	<script type="text/javascript" src="item-metadata.js"></script>
+	
+	<script type="module">
+		// make sure modern ESM library TinyGesture is loaded before chargen.js
+		import TinyGesture from 'https://cdn.jsdelivr.net/npm/tinygesture@3.0.0/+esm';
+		window.TinyGesture = TinyGesture;
+		const script = document.createElement('script');
+		script.src = 'sources/chargen.js';
+		document.body.appendChild(script);
+	</script>
+</head>
+<body>
+	<form id="customizeChar">
+		<!-- Header Section -->
+		<section id="header-left" class="sticky header">
+			<h1>
+				<span>Universal LPC Spritesheet Generator</span>
+				<a href="https://github.com/liberatedpixelcup/Universal-LPC-Spritesheet-Character-Generator">
+					<img src="sources/github-mark.png" alt="View on GitHub" style="width:32px;height:32px;">
+				</a>
+			</h1>
+			<p>Free/Libre pixel art from the <a href="https://lpc.opengameart.org">Liberated Pixel Cup</a></p>
+			<p>You must <a id="scroll-to-credits" href="#">credit the authors of this artwork.</a></p>
+		</section>
+
+		<div class="main-container">
+			<!-- Preview Section -->
+			<section class="preview-section">
+				<h2>Preview</h2>
+				
+				<div class="animation-preview">
+					<h3>Animation Preview</h3>
+					<select id="whichAnim">
+						<option value="spellcast" data-row="0" data-num="4" data-cycle="7">Spellcast</option>
+						<option value="thrust" data-row="4" data-num="4" data-cycle="8">Thrust</option>
+						<option value="walk" selected data-row="8" data-num="4" data-cycle="9">Walk</option>
+						<option value="slash" data-row="12" data-num="4" data-cycle="6">Slash</option>
+						<option value="shoot" data-row="16" data-num="4" data-cycle="13">Shoot</option>
+						<option value="hurt" data-row="20" data-num="1" data-cycle="6">Hurt</option>
+						<option value="climb" data-row="21" data-num="1" data-cycle="6">Climb</option>
+						<option value="idle" data-row="22" data-num="4" data-cycle-custom="0-0-1">Idle</option>
+						<option value="jump" data-row="26" data-num="4" data-cycle-custom="0-1-2-3-4-1">Jump</option>
+						<option value="sit" data-row="30" data-num="4" data-cycle-custom="0-0-0-0-0-1-1-1-1-1-2-2-2-2-2">Sit</option>
+						<option value="emote" data-row="34" data-num="4" data-cycle-custom="0-0-0-0-0-1-1-1-1-1-2-2-2-2-2">Emote</option>
+						<option value="run" data-row="38" data-num="4" data-cycle="8">Run</option>
+						<option value="watering" data-row="4" data-num="4" data-cycle="4" data-cycle-custom="0-1-4-4-4-4-5">Watering</option>
+						<option value="combat" data-row="42" data-num="4" data-cycle-custom="0-0-1">Combat Idle</option>
+						<option value="1h_slash" data-row="46" data-num="4" data-cycle-custom="0-1-2-3-4-5-6">1-Handed Slash</option>
+						<option value="1h_backslash" data-row="46" data-num="4" data-cycle-custom="0-1-2-3-4-5-7-8-9-10-11-12">1-Handed Backslash</option>
+						<option value="1h_halfslash" data-row="50" data-num="4" data-cycle="6">1-Handed Halfslash</option>
+					</select>
+					<code id="frame-cycle"></code>
+					<div>
+						<canvas id="previewAnimations" width="256" height="64"></canvas>
+					</div>
+				</div>
+				
+				<div class="full-preview">
+					<h3>Full Character Preview</h3>
+					<div class="instr">Complete sprite sheet (click to zoom in, double click to zoom out): </div>
+					<canvas id="spritesheet" width="832" height="1344">HTML5 Browser required.</canvas>
+				</div>
+			</section>
+
+			<!-- Controls and Customization Section -->
+			<div>
+				<!-- Controls Section -->
+				<section id="controls" class="sticky controls-section">
+					<h2>Controls</h2>
+					
+					<div class="control-group">
+						<h3>Download</h3>
+						<div class="control-buttons">
+							<a id="saveAsPNG"><input type="button" value="Spritesheet (PNG)"></a>
+							<button type="button" class="generateSheetCreditsTxt">Credits (text)</button>
+							<button type="button" class="generateSheetCreditsCsv">Credits (CSV)</button>
+						</div>
+					</div>
+					
+					<div class="control-group">
+						<h3>Download Image Pack</h3>
+						<div class="control-buttons">
+							<button type="button" class="exportSplitAnimations">Split by Animation</button>
+							<button type="button" class="exportSplitItemSheets">Split by Item</button>
+							<button type="button" class="exportSplitItemAnimations">Split by Animation & Item</button>
+						</div>
+					</div>
+					
+					<div class="control-group">
+						<h3>Import/Export</h3>
+						<div class="control-buttons">
+							<button type="button" class="exportToClipboard">Export to Clipboard (JSON)</button>
+							<button type="button" class="importFromClipboard">Import from Clipboard (JSON)</button>
+						</div>
+					</div>
+					
+					<div class="control-group">
+						<h3>Edit</h3>
+						<div class="control-buttons">
+							<button type="button" id="resetAll">Reset All</button>
+							<button type="button" class="replacePinkMask">Replace Mask (pink)</button>
+						</div>
+						<label for="match_body-color" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+							<input type="checkbox" name="match_body-color" value="compact" id="match_body-color" checked>
+							<span>Match body color</span>
+						</label>
+					</div>
+					
+					<div class="control-group">
+						<h3>View</h3>
+						<div class="control-buttons">
+							<button type="button" id="collapse">Collapse All</button>
+							<button type="button" id="expand">Expand Selected</button>
+						</div>
+						<label for="displayMode-compact" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+							<input type="checkbox" name="displayMode" value="compact" id="displayMode-compact">
+							<span>Compact Display</span>
+						</label>
+					</div>
+					
+					<div class="control-group">
+						<h3>Search</h3>
+						<div class="search-box">
+							<input type="search" id="searchbox" name="" placeholder="Search character options..." />
+							<output id="matches"></output>
+						</div>
+					</div>
+				</section>
+
+				<!-- Customization Section -->
+				<section id="chooser">
+					<details open>
+						<summary>Customize Your Character</summary>
+						
+						<div class="filters">
+							<h3>Filters</h3>
+							<div class="filter-options">
+								<div class="filter-option">
+									<input class="licenseCheckBox" type="checkbox" value="CC0" checked id="license-cc0">
+									<label for="license-cc0">CC0</label>
+								</div>
+								<div class="filter-option">
+									<input class="licenseCheckBox" type="checkbox" value="CC-BY-SA 3.0, CC-BY-SA 4.0" checked id="license-cc-by-sa">
+									<label for="license-cc-by-sa">CC-BY-SA</label>
+								</div>
+								<div class="filter-option">
+									<input class="licenseCheckBox" type="checkbox" value="CC-BY 3.0+, CC-BY 3.0, CC-BY 4.0, CC-BY" checked id="license-cc-by">
+									<label for="license-cc-by">CC-BY</label>
+								</div>
+								<div class="filter-option">
+									<input class="licenseCheckBox" type="checkbox" value="OGA-BY 3.0, OGA-BY 3.0+, OGA-BY 4.0" checked id="license-oga-by">
+									<label for="license-oga-by">OGA-BY</label>
+								</div>
+								<div class="filter-option">
+									<input class="licenseCheckBox" type="checkbox" value="GPL 2.0, GPL 3.0" checked id="license-gpl">
+									<label for="license-gpl">GPL</label>
+								</div>
+							</div>
+							<button type="button" class="btn btn-secondary mt-10 removeIncompatibleWithLicenses">Remove Incompatible Assets</button>
+						</div>
+						
+						<div class="filters">
+							<h3>Supported Animations</h3>
+							<div class="filter-options">
+								<div class="filter-option">
+									<input type="checkbox" id="animation-spellcast" name="animation">
+									<label for="animation-spellcast">Spellcast</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-thrust" name="animation">
+									<label for="animation-thrust">Thrust</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-walk" name="animation">
+									<label for="animation-walk">Walk</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-slash" name="animation">
+									<label for="animation-slash">Slash</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-shoot" name="animation">
+									<label for="animation-shoot">Shoot</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-hurt" name="animation">
+									<label for="animation-hurt">Hurt</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-watering" name="animation">
+									<label for="animation-watering">Watering</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-idle" name="animation">
+									<label for="animation-idle">Idle</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-jump" name="animation">
+									<label for="animation-jump">Jump</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-run" name="animation">
+									<label for="animation-run">Run</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-sit" name="animation">
+									<label for="animation-sit">Sit</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-emote" name="animation">
+									<label for="animation-emote">Emote</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-climb" name="animation">
+									<label for="animation-climb">Climb</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-combat" name="animation">
+									<label for="animation-combat">Combat</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-1h_slash" name="animation">
+									<label for="animation-1h_slash">1H Slash</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-1h_backslash" name="animation">
+									<label for="animation-1h_backslash">1H Backslash</label>
+								</div>
+								<div class="filter-option">
+									<input type="checkbox" id="animation-1h_halfslash" name="animation">
+									<label for="animation-1h_halfslash">1H Halfslash</label>
+								</div>
+							</div>
+							<button type="button" class="btn btn-secondary mt-10 removeUnsupported">Remove Unsupported Assets</button>
+						</div>
+						
+						<!-- Category Tabs -->
+						<div class="category-tabs">
+							<button class="tab-button active" data-category="body">Body</button>
+							<button class="tab-button" data-category="clothing">Clothing</button>
+							<button class="tab-button" data-category="weapons">Weapons</button>
+							<button class="tab-button" data-category="accessories">Accessories</button>
+							<button class="tab-button" data-category="hair">Hair</button>
+						</div>
+						
+						<!-- Category Content -->
+						<div class="category-content active" id="body-content">
+							<h3>Body</h3>
+							<!-- Body types -->
+							<div class="options-grid">
+								<div class="option-card">
+									<input type="radio" id="sex-male" name="sex" checked>
+									<label for="sex-male">
+										<canvas width="64" height="64"></canvas>
+										<span>Male</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="sex-female" name="sex">
+									<label for="sex-female">
+										<canvas width="64" height="64"></canvas>
+										<span>Female</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="sex-teen" name="sex">
+									<label for="sex-teen">
+										<canvas width="64" height="64"></canvas>
+										<span>Teen</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="sex-child" name="sex">
+									<label for="sex-child">
+										<canvas width="64" height="64"></canvas>
+										<span>Child</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="sex-pregnant" name="sex">
+									<label for="sex-pregnant">
+										<canvas width="64" height="64"></canvas>
+										<span>Pregnant</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="sex-muscular" name="sex">
+									<label for="sex-muscular">
+										<canvas width="64" height="64"></canvas>
+										<span>Muscular</span>
+									</label>
+								</div>
+							</div>
+							
+							<!-- Shadow options -->
+							<h3 class="mt-20">Shadow</h3>
+							<div class="options-grid">
+								<div class="option-card selected">
+									<input type="radio" id="shadow-none_Shadow" name="shadow" class="none" checked>
+									<label for="shadow-none_Shadow">
+										<canvas width="64" height="64"></canvas>
+										<span>No Shadow</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="shadow-Shadow_shadow" name="shadow" parentName="Shadow" variant="shadow" matchBodyColor="false">
+									<label for="shadow-Shadow_shadow">
+										<canvas width="64" height="64"></canvas>
+										<span>Shadow</span>
+									</label>
+								</div>
+							</div>
+							
+							<!-- Body color options -->
+							<h3 class="mt-20">Body Color</h3>
+							<div class="options-grid">
+								<div class="option-card selected">
+									<input type="radio" id="body-none_Body_color" name="body" class="none" checked>
+									<label for="body-none_Body_color">
+										<canvas width="64" height="64"></canvas>
+										<span>No Body</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="body-Body_color_light" name="body" parentName="Body_color" variant="light" matchBodyColor="true">
+									<label for="body-Body_color_light">
+										<canvas width="64" height="64"></canvas>
+										<span>Light</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="body-Body_color_amber" name="body" parentName="Body_color" variant="amber" matchBodyColor="true">
+									<label for="body-Body_color_amber">
+										<canvas width="64" height="64"></canvas>
+										<span>Amber</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="body-Body_color_olive" name="body" parentName="Body_color" variant="olive" matchBodyColor="true">
+									<label for="body-Body_color_olive">
+										<canvas width="64" height="64"></canvas>
+										<span>Olive</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="body-Body_color_taupe" name="body" parentName="Body_color" variant="taupe" matchBodyColor="true">
+									<label for="body-Body_color_taupe">
+										<canvas width="64" height="64"></canvas>
+										<span>Taupe</span>
+									</label>
+								</div>
+								<div class="option-card">
+									<input type="radio" id="body-Body_color_bronze" name="body" parentName="Body_color" variant="bronze" matchBodyColor="true">
+									<label for="body-Body_color_bronze">
+										<canvas width="64" height="64"></canvas>
+										<span>Bronze</span>
+									</label>
+								</div>
+							</div>
+							
+							<!-- This is where the generated content will be inserted -->
+							<div_sheet_shadow-Shadow></div_sheet_shadow-Shadow>
+							<div_sheet_body-Body_color></div_sheet_body-Body_color>
+						</div>
+						
+						<div class="category-content" id="clothing-content">
+							<h3>Clothing Options</h3>
+							<div class="instruction">
+								<p>Select clothing items from the categories below to customize your character.</p>
+							</div>
+							<!-- This section will be populated by the generation script -->
+							<div_sheet_torso-Shirt></div_sheet_torso-Shirt>
+							<div_sheet_legs-Pants></div_sheet_legs-Pants>
+							<div_sheet_legs-Trousers></div_sheet_legs-Trousers>
+							<div_sheet_torso-Vest></div_sheet_torso-Vest>
+							<div_sheet_legs-Skirt></div_sheet_legs-Skirt>
+							<div_sheet_torso-Dress></div_sheet_torso-Dress>
+							<div_sheet_torso-Shirt_long></div_sheet_torso-Shirt_long>
+							<div_sheet_legs-Cloth_pants></div_sheet_legs-Cloth_pants>
+							<div_sheet_torso-Cloth_vest></div_sheet_torso-Cloth_vest>
+							<div_sheet_legs-Cloth_skirt></div_sheet_legs-Cloth_skirt>
+							<div_sheet_torso-Cloth_longshirt></div_sheet_torso-Cloth_longshirt>
+							<div_sheet_torso-Shirt_split></div_sheet_torso-Shirt_split>
+							<div_sheet_legs-Pants_split></div_sheet_legs-Pants_split>
+							<div_sheet_torso-Vest_split></div_sheet_torso-Vest_split>
+							<div_sheet_legs-Skirt_split></div_sheet_legs-Skirt_split>
+							<div_sheet_torso-Dress_split></div_sheet_torso-Dress_split>
+							<div_sheet_torso-Shirt_long_split></div_sheet_torso-Shirt_long_split>
+							<div_sheet_legs-Cloth_pants_split></div_sheet_legs-Cloth_pants_split>
+							<div_sheet_torso-Cloth_vest_split></div_sheet_torso-Cloth_vest_split>
+							<div_sheet_legs-Cloth_skirt_split></div_sheet_legs-Cloth_skirt_split>
+							<div_sheet_torso-Cloth_longshirt_split></div_sheet_torso-Cloth_longshirt_split>
+						</div>
+						
+						<div class="category-content" id="weapons-content">
+							<h3>Weapons</h3>
+							<div class="instruction">
+								<p>Choose weapons for your character. Different weapons support different animations.</p>
+							</div>
+							<!-- This section will be populated by the generation script -->
+							<div_sheet_weapon-Long_sword></div_sheet_weapon-Long_sword>
+							<div_sheet_weapon-Short_sword></div_sheet_weapon-Short_sword>
+							<div_sheet_weapon-Axe></div_sheet_weapon-Axe>
+							<div_sheet_weapon-Spear></div_sheet_weapon-Spear>
+							<div_sheet_weapon-Bow></div_sheet_weapon-Bow>
+							<div_sheet_weapon-Staff></div_sheet_weapon-Staff>
+							<div_sheet_weapon-Dagger></div_sheet_weapon-Dagger>
+							<div_sheet_weapon-Mace></div_sheet_weapon-Mace>
+							<div_sheet_weapon-Hammer></div_sheet_weapon-Hammer>
+							<div_sheet_weapon-Flail></div_sheet_weapon-Flail>
+							<div_sheet_weapon-Shield></div_sheet_weapon-Shield>
+						</div>
+						
+						<div class="category-content" id="accessories-content">
+							<h3>Accessories</h3>
+							<div class="instruction">
+								<p>Add accessories like jewelry, belts, and other items to enhance your character.</p>
+							</div>
+							<!-- This section will be populated by the generation script -->
+							<div_sheet_accessory-Belt></div_sheet_accessory-Belt>
+							<div_sheet_accessory-Necklace></div_sheet_accessory-Necklace>
+							<div_sheet_accessory-Ring></div_sheet_accessory-Ring>
+							<div_sheet_accessory-Earrings></div_sheet_accessory-Earrings>
+							<div_sheet_accessory-Hat></div_sheet_accessory-Hat>
+							<div_sheet_accessory-Cape></div_sheet_accessory-Cape>
+							<div_sheet_accessory-Gloves></div_sheet_accessory-Gloves>
+							<div_sheet_accessory-Boots></div_sheet_accessory-Boots>
+							<div_sheet_accessory-Shoulders></div_sheet_accessory-Shoulders>
+						</div>
+						
+						<div class="category-content" id="hair-content">
+							<h3>Hair</h3>
+							<div class="instruction">
+								<p>Select hairstyles that match your character's body type and gender.</p>
+							</div>
+							<!-- This section will be populated by the generation script -->
+							<div_sheet_hair-Hair></div_sheet_hair-Hair>
+							<div_sheet_hair-Facial_hair></div_sheet_hair-Facial_hair>
+						</div>
+					</details>
+				</section>
+			</div>
+		</div>
+	</form>
+
+	<!-- JavaScript for UI interactions -->
+	<script>
+		// Tab switching functionality
+		document.querySelectorAll('.tab-button').forEach(button => {
+			button.addEventListener('click', () => {
+				// Remove active class from all buttons and content
+				document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+				document.querySelectorAll('.category-content').forEach(content => content.classList.remove('active'));
+				
+				// Add active class to clicked button
+				button.classList.add('active');
+				
+				// Show corresponding content
+				const category = button.dataset.category;
+				document.getElementById(`${category}-content`).classList.add('active');
+			});
+		});
+		
+		// Option card selection
+		document.querySelectorAll('.option-card').forEach(card => {
+			card.addEventListener('click', () => {
+				// Remove selected class from all cards in the same group
+				const groupName = card.querySelector('input').name;
+				document.querySelectorAll(`input[name="${groupName}"]`).forEach(input => {
+					input.closest('.option-card').classList.remove('selected');
+				});
+				
+				// Add selected class to clicked card
+				card.classList.add('selected');
+				
+				// Check the radio button
+				card.querySelector('input').checked = true;
+				
+				// Trigger change event for compatibility with existing code
+				card.querySelector('input').dispatchEvent(new Event('change'));
+			});
+		});
+		
+		// Initialize the first tab as active
+		document.querySelector('.tab-button').classList.add('active');
+		document.querySelector('.category-content').classList.add('active');
+	</script>
+</body>
+</html>

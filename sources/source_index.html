@@ -3,16 +3,19 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Universal LPC Sprite Sheet Character Generator</title>
 	<!-- Preconnect for faster resource loading from external CDNs -->
 	<link rel="preconnect" href="https://code.jquery.com" crossorigin>
 	<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 	<!-- Preload critical resources -->
 	<link rel="preload" href="sources/chargen.css" as="style">
+	<link rel="preload" href="sources/modern-styles.css" as="style">
 	<link rel="preload" href="https://code.jquery.com/jquery-3.7.1.min.js" as="script" crossorigin integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=">
 	<link rel="preload" href="item-metadata.js" as="script">
 	<link rel="preload" href="sources/chargen.js" as="script">
 	<link rel="stylesheet" type="text/css" href="sources/chargen.css">
+	<link rel="stylesheet" type="text/css" href="sources/modern-styles.css">
 	<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 	<script type="text/javascript" src="sources/jhash-2.2.min.js"></script>
 	<script type="text/javascript" src="sources/custom-animations.js"></script>
@@ -31,56 +34,76 @@
 </head>
 <body>
 	<form id="customizeChar">
-		<section id="header-left" class="sticky">
-			<h1>Universal LPC Spritesheet Generator <a href="https://github.com/liberatedpixelcup/Universal-LPC-Spritesheet-Character-Generator"><img src="sources/github-mark.png" alt="View on GitHub" style="width:24px;height:24px;"></a> </h1>
+		<section id="header-left" class="sticky header">
+			<h1>
+				<span>Universal LPC Spritesheet Generator</span>
+				<a href="https://github.com/liberatedpixelcup/Universal-LPC-Spritesheet-Character-Generator">
+					<img src="sources/github-mark.png" alt="View on GitHub" style="width:32px;height:32px;">
+				</a>
+			</h1>
 			<p>Free/Libre pixel art from the <a href="https://lpc.opengameart.org">Liberated Pixel Cup</a></p>
 			<p>You must <a id="scroll-to-credits" href="#">credit the authors of this artwork.</a></p>
 		</section>
 		<section id="controls" class="sticky">
 			<details open>
 				<summary>Controls</summary>
-				<div>
-					<label class="control-label">Download:</label>
-					<a id="saveAsPNG"><input type="button" value="Spritesheet single image (PNG)"></a>
-					<button type="button" class="generateSheetCreditsTxt">Credits (text)</button>
-					<button type="button" class="generateSheetCreditsCsv">Credits (CSV)</button>
+				<div class="control-group">
+					<h3>Download</h3>
+					<div class="control-buttons">
+						<a id="saveAsPNG"><input type="button" value="Spritesheet (PNG)"></a>
+						<button type="button" class="generateSheetCreditsTxt">Credits (text)</button>
+						<button type="button" class="generateSheetCreditsCsv">Credits (CSV)</button>
+					</div>
 				</div>
-				<div>
-					<label class="control-label">Download image pack with credits and JSON (ZIP):</label>
-					<button type="button" class="exportSplitAnimations">Split by animation</button>
-					<button type="button" class="exportSplitItemSheets">Split by item</button>
-					<button type="button" class="exportSplitItemAnimations">Split by animation and item</button>
+				<div class="control-group">
+					<h3>Download Image Pack</h3>
+					<div class="control-buttons">
+						<button type="button" class="exportSplitAnimations">Split by Animation</button>
+						<button type="button" class="exportSplitItemSheets">Split by Item</button>
+						<button type="button" class="exportSplitItemAnimations">Split by Animation & Item</button>
+					</div>
 				</div>
-				<div>
-					<label class="control-label">Import/Export:</label>
-					<button type="button" class="exportToClipboard">Export to Clipboard (JSON)</button>
-					<button type="button" class="importFromClipboard">Import from Clipboard (JSON)</button>
+				<div class="control-group">
+					<h3>Import/Export</h3>
+					<div class="control-buttons">
+						<button type="button" class="exportToClipboard">Export to Clipboard (JSON)</button>
+						<button type="button" class="importFromClipboard">Import from Clipboard (JSON)</button>
+					</div>
 				</div>
-				<div>
-					<label class="control-label">Edit:</label>
-					<button type="button" id="resetAll">Reset all</button>
-					<button type="button" class="replacePinkMask">Replace Mask (pink)</button>
-					<label for="match_body-color">
+				<div class="control-group">
+					<h3>Edit</h3>
+					<div class="control-buttons">
+						<button type="button" id="resetAll">Reset All</button>
+						<button type="button" class="replacePinkMask">Replace Mask (pink)</button>
+					</div>
+					<label for="match_body-color" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
 						<input type="checkbox" name="match_body-color" value="compact" id="match_body-color" checked>
-						Match body color
+						<span>Match body color</span>
 					</label>
 				</div>
-				<div>
-					<label class="control-label">View:</label>
-					<button type="button" id="collapse">Collapse All</button>
-					<button type="button" id="expand">Expand Selected</button>
-					<label for="displayMode-compact"><input type="checkbox" name="displayMode" value="compact" id="displayMode-compact"> Compact Display</label>
+				<div class="control-group">
+					<h3>View</h3>
+					<div class="control-buttons">
+						<button type="button" id="collapse">Collapse All</button>
+						<button type="button" id="expand">Expand Selected</button>
+					</div>
+					<label for="displayMode-compact" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+						<input type="checkbox" name="displayMode" value="compact" id="displayMode-compact">
+						<span>Compact Display</span>
+					</label>
 				</div>
-				<div>
-					<label class="control-label" for="searchbox">Search: </label>
-					<input type="search" id="searchbox" name="" placeholder="Search" />
-					<output id="matches"></output>
+				<div class="control-group">
+					<h3>Search</h3>
+					<div class="search-box">
+						<input type="search" id="searchbox" name="" placeholder="Search character options..." />
+						<output id="matches"></output>
+					</div>
 				</div>
 			</details>
 		</section>
 		<section id="preview-animations" class="sticky">
-			<div id="previewAnimationsBox">
-				Preview
+			<div id="previewAnimationsBox" class="animation-preview">
+				<h3>Animation Preview</h3>
 				<select id="whichAnim">
 					<option value="spellcast" data-row="0" data-num="4" data-cycle="7">Spellcast</option>
 					<option value="thrust" data-row="4" data-num="4" data-cycle="8">Thrust</option>
@@ -1612,5 +1635,194 @@
 	<div id="netlify-link">
 		<p><a href="https://www.netlify.com/">This site is powered by Netlify</a></p>
 	</div>
+	<!-- JavaScript for UI interactions -->
+	<script>
+		// Add modern UI enhancements after the page loads
+		document.addEventListener('DOMContentLoaded', function() {
+			// Add classes for modern styling
+			const chooser = document.getElementById('chooser');
+			if (chooser) {
+				chooser.classList.add('customization-section');
+			}
+			
+			const controls = document.getElementById('controls');
+			if (controls) {
+				controls.classList.add('controls-section');
+			}
+			
+			// Add modern styling to filter sections
+			const filterSections = document.querySelectorAll('#chooser > details > ul');
+			filterSections.forEach(section => {
+				if (section.querySelector('button')) {
+					section.classList.add('filters');
+				}
+			});
+			
+			// Add modern styling to option cards
+			const optionItems = document.querySelectorAll('#chooser li:not(.noPreview)');
+			optionItems.forEach(item => {
+				if (!item.classList.contains('excluded-hide') && !item.classList.contains('excluded-text')) {
+					item.classList.add('option-card');
+				}
+			});
+			
+			// Add event listeners for option cards
+			const radioInputs = document.querySelectorAll('#chooser input[type="radio"]');
+			radioInputs.forEach(input => {
+				input.addEventListener('change', function() {
+					// Remove selected class from all cards in the same group
+					const groupName = this.name;
+					document.querySelectorAll(`input[name="${groupName}"]`).forEach(radio => {
+						if (radio.closest('.option-card')) {
+							radio.closest('.option-card').classList.remove('selected');
+						}
+					});
+					
+					// Add selected class to this card
+					if (this.closest('.option-card')) {
+						this.closest('.option-card').classList.add('selected');
+					}
+				});
+				
+				// Initialize selected state
+				if (input.checked && input.closest('.option-card')) {
+					input.closest('.option-card').classList.add('selected');
+				}
+			});
+			
+			// Add smooth scrolling for navigation
+			document.getElementById('scroll-to-credits').addEventListener('click', function(e) {
+				e.preventDefault();
+				const creditsSection = document.getElementById('credits');
+				creditsSection.scrollIntoView({ behavior: 'smooth' });
+			});
+			
+			// Add keyboard navigation support
+			document.addEventListener('keydown', function(e) {
+				// Press 'c' to focus on character customization
+				if (e.key === 'c' || e.key === 'C') {
+					e.preventDefault();
+					const firstCustomizationOption = document.querySelector('#chooser input[type="radio"]');
+					if (firstCustomizationOption) {
+						firstCustomizationOption.focus();
+					}
+				}
+				// Press 'p' to focus on preview
+				if (e.key === 'p' || e.key === 'P') {
+					e.preventDefault();
+					const previewCanvas = document.getElementById('spritesheet');
+					if (previewCanvas) {
+						previewCanvas.focus();
+					}
+				}
+				// Press 's' to focus on search
+				if (e.key === 's' || e.key === 'S') {
+					e.preventDefault();
+					const searchBox = document.getElementById('searchbox');
+					if (searchBox) {
+						searchBox.focus();
+					}
+				}
+			});
+			
+			// Add search functionality improvements
+			const searchBox = document.getElementById('searchbox');
+			if (searchBox) {
+				searchBox.addEventListener('input', function() {
+					const searchTerm = this.value.toLowerCase();
+					const optionCards = document.querySelectorAll('.option-card');
+					
+					// Reset all cards
+					optionCards.forEach(card => {
+						card.style.display = '';
+						card.classList.remove('search-result');
+					});
+					
+					// If search term is not empty, filter cards
+					if (searchTerm) {
+						optionCards.forEach(card => {
+							const cardText = card.textContent.toLowerCase();
+							if (cardText.includes(searchTerm)) {
+								card.classList.add('search-result');
+							} else {
+								card.style.display = 'none';
+							}
+						});
+					}
+				});
+			}
+			
+			// Add animation preview functionality
+			const animationSelect = document.getElementById('whichAnim');
+			if (animationSelect) {
+				animationSelect.addEventListener('change', function() {
+					// Add visual feedback when changing animation
+					this.classList.add('changed');
+					setTimeout(() => {
+						this.classList.remove('changed');
+					}, 300);
+				});
+			}
+			
+			// Add loading indicators
+			const previewCanvas = document.getElementById('previewAnimations');
+			const spritesheetCanvas = document.getElementById('spritesheet');
+			
+			if (previewCanvas) {
+				previewCanvas.addEventListener('loadstart', function() {
+					this.classList.add('loading');
+				});
+				
+				previewCanvas.addEventListener('loadend', function() {
+					this.classList.remove('loading');
+				});
+			}
+			
+			// Add visual feedback for button clicks
+			const buttons = document.querySelectorAll('button, input[type="button"]');
+			buttons.forEach(button => {
+				button.addEventListener('click', function() {
+					this.classList.add('clicked');
+					setTimeout(() => {
+						this.classList.remove('clicked');
+					}, 200);
+				});
+			});
+			
+			// Add tooltip functionality
+			const tooltips = document.querySelectorAll('[title]');
+			tooltips.forEach(tooltip => {
+				tooltip.addEventListener('mouseenter', function() {
+					const title = this.getAttribute('title');
+					if (title) {
+						// Create tooltip element
+						const tooltipElement = document.createElement('div');
+						tooltipElement.className = 'tooltip';
+						tooltipElement.textContent = title;
+						document.body.appendChild(tooltipElement);
+						
+						// Position tooltip
+						const rect = this.getBoundingClientRect();
+						tooltipElement.style.left = rect.left + (rect.width / 2) - (tooltipElement.offsetWidth / 2) + 'px';
+						tooltipElement.style.top = rect.top - tooltipElement.offsetHeight - 10 + 'px';
+						
+						// Add fade in animation
+						tooltipElement.style.opacity = '0';
+						tooltipElement.style.transition = 'opacity 0.2s';
+						setTimeout(() => {
+							tooltipElement.style.opacity = '1';
+						}, 10);
+					}
+				});
+				
+				tooltip.addEventListener('mouseleave', function() {
+					const tooltipElement = document.querySelector('.tooltip');
+					if (tooltipElement) {
+						tooltipElement.remove();
+					}
+				});
+			});
+		});
+	</script>
 </body>
 </html>
