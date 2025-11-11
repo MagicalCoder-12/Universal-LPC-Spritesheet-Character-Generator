@@ -121,10 +121,12 @@ body {
   grid-template-columns: 1fr 2fr;
   grid-template-rows: auto auto auto 1fr;
   gap: 20px;
-  max-width: 1400px;
+  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
   padding: 20px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .app-header {
@@ -281,6 +283,7 @@ body {
   border-radius: 5px;
   border: 1px solid var(--border-color);
   cursor: zoom-in;
+  height: auto;
 }
 
 /* Controls Section */

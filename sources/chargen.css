@@ -340,16 +340,20 @@ ul {
 
 #chooser ul>li>span {
   cursor: pointer;
+  display: block;
+  width: 100%;
 }
 
 #chooser ul>li>.condensed:after {
   padding-left: 10px;
   content: '\25B6';
+  float: right;
 }
 
 #chooser ul>li>.expanded:after, #chooser .condensed:hover:after {
   padding-left: 10px;
   content:  '\25BC';
+  float: right;
 }
 
 .condensed:hover, .expanded:hover {

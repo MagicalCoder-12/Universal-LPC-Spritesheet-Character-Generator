@@ -275,8 +275,8 @@ $(document).ready(function () {
       }
 
       setParams();
-      redraw();
-      showOrHideElements();
+      debouncedRedraw();
+      debouncedShowOrHideElements();
     });
   });
 
@@ -295,17 +295,34 @@ $(document).ready(function () {
     $ul.toggle("slow").promise().done(drawPreviews);
     event.stopPropagation();
   });
+  
+  // Toggle display of body type section specifically
+  $(".body-options > li > span").click(function (event) {
+    $(this).toggleClass("condensed").toggleClass("expanded");
+    $(".body-types").toggle("slow");
+    event.stopPropagation();
+  });
 
   $("#collapse").click(function () {
     $("#chooser>details>ul ul").hide("slow");
     $("#chooser>details>ul span.expanded")
       .removeClass("expanded")
       .addClass("condensed");
+    // Also collapse the body types section
+    $(".body-types").hide("slow");
+    $(".body-options > li > span").removeClass("expanded").addClass("condensed");
   });
+  
   $("#expand").click(function () {
     let parents = $('input[type="radio"]:checked').parents("ul");
     parents.prev("span").addClass("expanded").removeClass("condensed");
     parents.show().promise().done(drawPreviews);
+    // Also expand the body types section if it has selected items
+    const bodyParents = $('#sex-male:checked, #sex-female:checked, #sex-teen:checked, #sex-child:checked, #sex-pregnant:checked, #sex-muscular:checked').parents("ul");
+    if (bodyParents.length > 0) {
+      $(".body-options > li > span").removeClass("condensed").addClass("expanded");
+      $(".body-types").show("slow");
+    }
   });
 
   function search() {
@@ -420,8 +437,8 @@ $(document).ready(function () {
       });
     });
     setParams();
-    redraw();
-    showOrHideElements();
+    debouncedRedraw();
+    debouncedShowOrHideElements();
   });
 
   $(".removeUnsupported").click(function () {
@@ -444,8 +461,8 @@ $(document).ready(function () {
       }
     });
     setParams();
-    redraw();
-    showOrHideElements();
+    debouncedRedraw();
+    debouncedShowOrHideElements();
     return false;
   });
 
@@ -1302,6 +1319,11 @@ $(".exportSplitAnimations").click(async function() {
       .map((license) => license.trim());
   }
 
+  // Debounced redraw function to prevent excessive calls
+  const debouncedRedraw = debounce(function() {
+    redraw();
+  }, 100);
+
   function redraw() {
     profiler.mark('redraw:start');
     itemsToDraw = [];
@@ -1319,15 +1341,18 @@ $(".exportSplitAnimations").click(async function() {
       credits: "",
     };
 
-    $("#chooser input[type=radio]:checked").each(function (index) {
-      const $this = $(this);
-      for (jdx = 1; jdx < 10; jdx++) {
+    // Use native DOM methods for better performance
+    const checkedRadios = document.querySelectorAll("#chooser input[type=radio]:checked");
+    checkedRadios.forEach(function(radio) {
+      const $this = $(radio);
+      for (let jdx = 1; jdx < 10; jdx++) {
         const bodyTypeKey = `layer_${jdx}_${bodyTypeName}`;
-        if ($this.data(bodyTypeKey)) {
+        const dataValue = $this.data(bodyTypeKey);
+        if (dataValue) {
           const $liVariant = $this.closest("li.variant-list");
           const zPos = $this.data(`layer_${jdx}_zpos`);
           const custom_animation = $this.data(`layer_${jdx}_custom_animation`);
-          const fileName = $this.data(bodyTypeKey) || $liVariant.data();
+          const fileName = dataValue || $liVariant.data();
           const parentName = $this.attr(`name`);
           const name = $this.attr(`parentName`);
           const variant = $this.attr(`variant`);
@@ -1349,7 +1374,10 @@ $(".exportSplitAnimations").click(async function() {
               variant,
               supportedAnimations,
             };
-            dynamicReplacements(itemToDraw)
+            // Only do dynamic replacements if needed
+            if (fileName.includes('${')) {
+              dynamicReplacements(itemToDraw);
+            }
             addCreditFor(itemToDraw.fileName, licenses, authors, urls, notes);
             itemsToDraw.push(itemToDraw);
           }
@@ -1597,6 +1625,11 @@ $(".exportSplitAnimations").click(async function() {
     }
   }
 
+  // Debounced version of showOrHideElements
+  const debouncedShowOrHideElements = debounce(function() {
+    showOrHideElements();
+  }, 150);
+
   function showOrHideElements() {
     profiler.mark('showOrHideElements:start');
 
@@ -1619,167 +1652,193 @@ $(".exportSplitAnimations").click(async function() {
     const listsToRedraw = [];
 
     // Use metadata object instead of massive DOM queries
-    for (const [itemId, metadata] of Object.entries(window.itemMetadata)) {
-      // Escape special characters in ID for jQuery selector
-      const escapedId = itemId.replace(/[!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~]/g, '\\$&');
-      const $listItem = $(`#${escapedId}`);
-      if ($listItem.length === 0) continue;
+    // Limit the number of items processed at once to prevent UI blocking
+    const itemEntries = Object.entries(window.itemMetadata);
+    const batchSize = 50; // Process in batches
+    let currentIndex = 0;
 
-      let display = true;
-      let hasExcluded = false;
-      let excludedText = '';
+    const processBatch = () => {
+      const endIndex = Math.min(currentIndex + batchSize, itemEntries.length);
+      for (let i = currentIndex; i < endIndex; i++) {
+        const [itemId, metadata] = itemEntries[i];
+        
+        // Escape special characters in ID for jQuery selector
+        const escapedId = itemId.replace(/[!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~]/g, '\\$&');
+        const $listItem = $(`#${escapedId}`);
+        if ($listItem.length === 0) continue;
 
-      // Check body type compatibility
-      if (metadata.required && metadata.required.length > 0) {
-        if (!metadata.required.includes(bodyType)) {
-          display = false;
-        }
-      }
+        let display = true;
+        let hasExcluded = false;
+        let excludedText = '';
 
-      // Check required tags
-      if (display && metadata.required_tags && metadata.required_tags.length > 0) {
-        for (const tag of metadata.required_tags) {
-          if (tag && !selectedTags.has(tag)) {
+        // Check body type compatibility
+        if (metadata.required && metadata.required.length > 0) {
+          if (!metadata.required.includes(bodyType)) {
             display = false;
-            break;
           }
         }
-      }
 
-      // Check excluded tags
-      if (display && metadata.excluded_tags && metadata.excluded_tags.length > 0) {
-        for (const tag of metadata.excluded_tags) {
-          if (tag && selectedTags.has(tag)) {
-            hasExcluded = true;
-            const $firstButton = $listItem.find("input[type=radio][parentname]").eq(0);
-            if ($firstButton.length > 0) {
-              excludedText = `${$firstButton.attr("name")} is not allowed with ${tag}`;
+        // Check required tags
+        if (display && metadata.required_tags && metadata.required_tags.length > 0) {
+          for (const tag of metadata.required_tags) {
+            if (tag && !selectedTags.has(tag)) {
+              display = false;
+              break;
             }
-            break;
           }
         }
-      }
 
-      // Check template compatibility (still needs DOM query for this one)
-      if (display) {
-        const $firstButton = $listItem.find("input[type=radio]").eq(0);
-        const mungedTemplate = $firstButton.data("layer_1_template");
-        if (mungedTemplate) {
-          const template = mungedTemplate.replace(/'/g, '"');
-          try {
-            const parsedTemplate = JSON.parse(template);
-            const keys = Object.keys(parsedTemplate);
-            for (const key of keys) {
-              const requiredVals = Object.keys(parsedTemplate[key]);
-              const prop = whichPropChecked(ids, key, requiredVals);
-              if (prop === "ERROR") {
-                display = false;
+        // Check excluded tags
+        if (display && metadata.excluded_tags && metadata.excluded_tags.length > 0) {
+          for (const tag of metadata.excluded_tags) {
+            if (tag && selectedTags.has(tag)) {
+              hasExcluded = true;
+              const $firstButton = $listItem.find("input[type=radio][parentname]").eq(0);
+              if ($firstButton.length > 0) {
+                excludedText = `${$firstButton.attr("name")} is not allowed with ${tag}`;
+              }
+              break;
+            }
+          }
+        }
+
+        // Check template compatibility (still needs DOM query for this one)
+        if (display) {
+          const $firstButton = $listItem.find("input[type=radio]").eq(0);
+          const mungedTemplate = $firstButton.data("layer_1_template");
+          if (mungedTemplate) {
+            const template = mungedTemplate.replace(/'/g, '"');
+            try {
+              const parsedTemplate = JSON.parse(template);
+              const keys = Object.keys(parsedTemplate);
+              for (const key of keys) {
+                const requiredVals = Object.keys(parsedTemplate[key]);
+                const prop = whichPropChecked(ids, key, requiredVals);
+                if (prop === "ERROR") {
+                  display = false;
+                  break;
+                }
+              }
+            } catch {
+              console.error("Error parsing template", template);
+            }
+          }
+        }
+
+        // Check animation compatibility
+        if (display && metadata.animations && selectedAnims.length > 0) {
+          for (const selectedAnim of selectedAnims) {
+            if (!metadata.animations.includes(selectedAnim)) {
+              display = false;
+              if ($listItem.find("input[type=radio]:checked:not([id*=none])").length > 0) {
+                hasUnsupported = true;
+              }
+              break;
+            }
+          }
+        }
+
+        // Apply visibility
+        if (display) {
+          $listItem.show();
+          // Only add to redraw list if the item is visible and expanded
+          if ($listItem.is(':visible')) {
+            listsToRedraw.push($listItem.get(0));
+          }
+        } else {
+          $listItem.hide();
+        }
+
+        // Handle excluded tag UI
+        if (hasExcluded) {
+          $listItem.find('.excluded-hide').hide().attr('hidden', 'hidden');
+          $listItem.find('.excluded-text').show().attr('hidden', null).text(excludedText);
+        } else {
+          $listItem.find('.excluded-hide').show().attr('hidden', null);
+          $listItem.find('.excluded-text').hide().attr('hidden', 'hidden').text('');
+        }
+
+        // Check license compatibility for individual radio buttons within this list
+        $listItem.find("input[type=radio]:not(.none)").each(function () {
+          const $radio = $(this);
+          let radioDisplay = true;
+
+          // Check licenses using metadata
+          if (metadata.licenses && metadata.licenses[bodyType]) {
+            const licensesForAsset = metadata.licenses[bodyType];
+            if (!allowedLicenses.some((allowedLicense) =>
+              licensesForAsset.includes(allowedLicense)
+            )) {
+              radioDisplay = false;
+              if (this.checked) {
+                hasProhibited = true;
+              }
+            }
+          }
+
+          // Check required tags (already in metadata)
+          if (radioDisplay && metadata.required_tags && metadata.required_tags.length > 0) {
+            for (const tag of metadata.required_tags) {
+              if (tag && !selectedTags.has(tag)) {
+                radioDisplay = false;
                 break;
               }
             }
-          } catch {
-            console.error("Error parsing template", template);
           }
-        }
-      }
 
-      // Check animation compatibility
-      if (display && metadata.animations && selectedAnims.length > 0) {
-        for (const selectedAnim of selectedAnims) {
-          if (!metadata.animations.includes(selectedAnim)) {
-            display = false;
-            if ($listItem.find("input[type=radio]:checked:not([id*=none])").length > 0) {
-              hasUnsupported = true;
+          // Check excluded tags (already in metadata)
+          if (radioDisplay && metadata.excluded_tags && metadata.excluded_tags.length > 0) {
+            for (const tag of metadata.excluded_tags) {
+              if (tag && selectedTags.has(tag)) {
+                radioDisplay = false;
+                break;
+              }
             }
-            break;
           }
-        }
+
+          // Apply visibility to radio button
+          if (radioDisplay) {
+            $radio.parent().show();
+          } else {
+            $radio.parent().hide();
+          }
+        });
       }
 
-      // Apply visibility
-      if (display) {
-        $listItem.show();
-        listsToRedraw.push($listItem.get(0));
+      currentIndex = endIndex;
+      
+      // If there are more items to process, schedule the next batch
+      if (currentIndex < itemEntries.length) {
+        setTimeout(processBatch, 10);
+        return;
+      }
+
+      // All items processed, now update UI
+      // Update warning buttons
+      if (hasUnsupported) {
+        $(".removeUnsupported").show();
       } else {
-        $listItem.hide();
+        $(".removeUnsupported").hide();
       }
 
-      // Handle excluded tag UI
-      if (hasExcluded) {
-        $listItem.find('.excluded-hide').hide().attr('hidden', 'hidden');
-        $listItem.find('.excluded-text').show().attr('hidden', null).text(excludedText);
+      if (hasProhibited) {
+        $(".removeIncompatibleWithLicenses").show();
       } else {
-        $listItem.find('.excluded-hide').show().attr('hidden', null);
-        $listItem.find('.excluded-text').hide().attr('hidden', 'hidden').text('');
+        $(".removeIncompatibleWithLicenses").hide();
       }
 
-      // Check license compatibility for individual radio buttons within this list
-      $listItem.find("input[type=radio]:not(.none)").each(function () {
-        const $radio = $(this);
-        let radioDisplay = true;
+      // Redraw previews for visible items (but limit the number)
+      const maxPreviews = 20; // Limit previews to prevent performance issues
+      for (let i = 0; i < Math.min(listsToRedraw.length, maxPreviews); i++) {
+        drawPreviews.call(listsToRedraw[i]);
+      }
 
-        // Check licenses using metadata
-        if (metadata.licenses && metadata.licenses[bodyType]) {
-          const licensesForAsset = metadata.licenses[bodyType];
-          if (!allowedLicenses.some((allowedLicense) =>
-            licensesForAsset.includes(allowedLicense)
-          )) {
-            radioDisplay = false;
-            if (this.checked) {
-              hasProhibited = true;
-            }
-          }
-        }
+      profiler.mark('showOrHideElements:end');
+      profiler.measure('showOrHideElements', 'showOrHideElements:start', 'showOrHideElements:end');
+    };
 
-        // Check required tags (already in metadata)
-        if (radioDisplay && metadata.required_tags && metadata.required_tags.length > 0) {
-          for (const tag of metadata.required_tags) {
-            if (tag && !selectedTags.has(tag)) {
-              radioDisplay = false;
-              break;
-            }
-          }
-        }
-
-        // Check excluded tags (already in metadata)
-        if (radioDisplay && metadata.excluded_tags && metadata.excluded_tags.length > 0) {
-          for (const tag of metadata.excluded_tags) {
-            if (tag && selectedTags.has(tag)) {
-              radioDisplay = false;
-              break;
-            }
-          }
-        }
-
-        // Apply visibility to radio button
-        if (radioDisplay) {
-          $radio.parent().show();
-        } else {
-          $radio.parent().hide();
-        }
-      });
-    }
-
-    // Update warning buttons
-    if (hasUnsupported) {
-      $(".removeUnsupported").show();
-    } else {
-      $(".removeUnsupported").hide();
-    }
-
-    if (hasProhibited) {
-      $(".removeIncompatibleWithLicenses").show();
-    } else {
-      $(".removeIncompatibleWithLicenses").hide();
-    }
-
-    // Redraw previews for visible items
-    for (const listElement of listsToRedraw) {
-      drawPreviews.call(listElement);
-    }
-
-    profiler.mark('showOrHideElements:end');
-    profiler.measure('showOrHideElements', 'showOrHideElements:start', 'showOrHideElements:end');
+    // Start processing the first batch
+    processBatch();
   }
 
   function interpretParams() {
@@ -1888,13 +1947,24 @@ $(".exportSplitAnimations").click(async function() {
 
   function drawPreviews() {
     profiler.mark('drawPreviews:start');
+    
+    // Limit the number of previews generated at once to prevent performance issues
+    const maxPreviews = 30;
+    let previewCount = 0;
+    
     const buttons = $(this)
       .find("input[type=radio]")
       .filter(function () {
         return $(this).is(":visible");
       })
       .toArray();
+      
     for (const button of buttons) {
+      // Skip if we've already generated too many previews
+      if (previewCount >= maxPreviews) {
+        break;
+      }
+      
       const $this = $(button);
       if (
         !$this.parent().hasClass("hasPreview") &&
@@ -2008,6 +2078,7 @@ $(".exportSplitAnimations").click(async function() {
             .addClass("hasPreview")
             .parent()
             .addClass("hasPreview");
+          previewCount++;
         }
       }
     }
@@ -2016,7 +2087,8 @@ $(".exportSplitAnimations").click(async function() {
   }
 
   function nextFrame() {
-    const fpsInterval = 1000 / 8;
+    // Reduce frame rate to improve performance
+    const fpsInterval = 1000 / 6; // Reduced from 8 to 6 FPS
     let now = Date.now();
     let elapsed = now - past;
     if (elapsed > fpsInterval) {
